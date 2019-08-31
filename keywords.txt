@@ -1,4 +1,7 @@
+# Datatypes (KEYWORD1)
 BaleMessengerBot  KEYWORD1
+
+# Methods and Functions (KEYWORD2)
 init  KEYWORD2
 getMe  KEYWORD2
 sendMessage  KEYWORD2
