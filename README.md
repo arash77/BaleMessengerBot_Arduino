@@ -1,2 +1,2 @@
-# BaleMessengerBot_Arduino
+# BaleMessengerBot Arduino
 Bale Messenger Bot Library for Arduino
