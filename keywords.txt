@@ -1,0 +1,6 @@
+BaleMessengerBot  KEYWORD1
+init  KEYWORD2
+getMe  KEYWORD2
+sendMessage  KEYWORD2
+sendPhoto  KEYWORD2
+getUpdates  KEYWORD2
