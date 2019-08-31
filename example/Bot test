@@ -1,0 +1,81 @@
+#include <ESP8266WiFi.h>
+#include <WiFiClientSecure.h>
+#include <BaleMessengerBot.h>
+
+#change ssid, password and BOTtoken
+#define ssid = "ssid";
+#define password = "password";
+#define BOTtoken "BOTtoken"
+
+WiFiClientSecure client;
+BaleMessengerBot bot(BOTtoken, client);
+
+long Bot_lasttime;
+
+void handleNewMessages(int numNewMessages) {
+  Serial.print("handleNewMessages: ");
+  Serial.println(String(numNewMessages));
+
+  for (int i = 0; i < numNewMessages; i++) {
+    String chat_id = String(bot.messages[i].chat_id);
+    String text = bot.messages[i].text;
+    String from_name = bot.messages[i].from_name;
+    if (text == "/start") {
+      String welcome = "سلام " + from_name + ",\nبه ربات اینترنت اشیا خوش اومدی.";
+      bot.sendMessage(chat_id, welcome);
+    }
+
+    else if (text == "1") {
+      digitalWrite(LED_BUILTIN, LOW);
+      bot.sendMessage(chat_id, "چراغ روشن شد!");
+    }
+    else if (text == "0") {
+      digitalWrite(LED_BUILTIN, HIGH);
+      bot.sendMessage(chat_id, "چراغ خاموش شد!");
+    }
+
+    else {
+      bot.sendMessage(chat_id, "منظورتون چیه؟");
+    }
+  }
+}
+
+
+void setup() {
+  Serial.begin(115200);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+
+  Serial.print("Connecting Wifi: ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+  client.setInsecure();
+  bot.init();
+  Serial.println("READY");
+}
+
+void loop() {
+  if (millis() - Bot_lasttime > 1000)  {
+    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    while (numNewMessages) {
+      handleNewMessages(numNewMessages);
+      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    }
+    Bot_lasttime = millis();
+  }
+}
