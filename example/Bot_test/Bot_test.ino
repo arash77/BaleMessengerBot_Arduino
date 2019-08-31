@@ -2,10 +2,11 @@
 #include <WiFiClientSecure.h>
 #include <BaleMessengerBot.h>
 
-#change ssid, password and BOTtoken
-#define ssid = "ssid";
-#define password = "password";
-#define BOTtoken "BOTtoken"
+#Change SSID, PASSWORD and BOTTOKEN
+
+#define ssid "SSID"
+#define password "PASSWORD"
+#define BOTtoken "BOTTOKEN"
 
 WiFiClientSecure client;
 BaleMessengerBot bot(BOTtoken, client);
