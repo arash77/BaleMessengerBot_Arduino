@@ -1,22 +1,12 @@
 /*
-Copyright (c) 2018 Arash Kadkhodaei. All right reserved.
+   Copyright (c) 2019 Arash Kadkhodaei. All right reserved.
 
-BaleMessengerBot - Library to create your own bale Bot using
-ESP8266 or ESP32 on Arduino IDE.
+   BaleMessengerBot - Library to create your own Bale Bot using
+   ESP8266 or ESP32 on Arduino IDE.
 
-This library is free software; you can redistribute it and/or
-modify it under the terms of the GNU Lesser General Public
-License as published by the Free Software Foundation; either
-version 2.1 of the License, or (at your option) any later version.
-
-This library is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public
-License along with this library; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+   This library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 */
 
 #ifndef BaleMessengerBot_h
@@ -33,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 typedef bool (*MoreDataAvailable)();
 typedef byte (*GetNextByte)();
 
-struct telegramMessage {
+struct baleMessage {
   String text;
   String chat_id;
   String chat_title;
@@ -49,10 +39,10 @@ struct telegramMessage {
 class BaleMessengerBot {
 public:
   BaleMessengerBot(String token, Client &client);
-  String sendGetToTelegram(String command);
-  String sendPostToTelegram(String command, JsonObject &payload);
+  String sendGetToBale(String command);
+  String sendPostToBale(String command, JsonObject &payload);
   String
-  sendMultipartFormDataToTelegram(String command, String binaryProperyName,
+  sendMultipartFormDataToBale(String command, String binaryProperyName,
                                   String fileName, String contentType,
                                   String chat_id, int fileSize,
                                   MoreDataAvailable moreDataAvailableCallback,
@@ -60,16 +50,10 @@ public:
 
   bool getMe();
 
-  bool sendSimpleMessage(String chat_id, String text, String parse_mode);
-  bool sendMessage(String chat_id, String text, String parse_mode = "");
-  bool sendMessageWithReplyKeyboard(String chat_id, String text,
-                                    String parse_mode, String keyboard,
-                                    bool resize = false, bool oneTime = false,
-                                    bool selective = false);
+  bool sendMessage(String chat_id, String text, int reply_to_message_id = 0);
   bool sendMessageWithInlineKeyboard(String chat_id, String text,
                                      String parse_mode, String keyboard);
 
-  bool sendChatAction(String chat_id, String text);
 
   bool sendPostMessage(JsonObject &payload);
   String sendPostPhoto(JsonObject &payload);
@@ -77,12 +61,11 @@ public:
                            MoreDataAvailable moreDataAvailableCallback,
                            GetNextByte getNextByteCallback);
   String sendPhoto(String chat_id, String photo, String caption = "",
-                   bool disable_notification = false,
-                   int reply_to_message_id = 0, String keyboard = "");
+                   int reply_to_message_id = 0);
 
   int getUpdates(long offset);
   bool checkForOkResponse(String response);
-  telegramMessage messages[HANDLE_MESSAGES];
+  baleMessage messages[HANDLE_MESSAGES];
   long last_message_received;
   String name;
   String userName;
@@ -97,7 +80,8 @@ private:
   Client *client;
   bool processResult(JsonObject &result, int messageIndex);
   void closeClient();
-  const int maxMessageLength = 1300;
+  const int maxMessageLength = 100000;
+  const int maxlimitinit = 10;
 };
 
 #endif

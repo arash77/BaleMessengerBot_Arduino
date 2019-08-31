@@ -1,40 +1,29 @@
 /*
-   Copyright (c) 2018 Arash Kadkhodaei. All right reserved.
+   Copyright (c) 2019 Arash Kadkhodaei. All right reserved.
 
    BaleMessengerBot - Library to create your own Bale Bot using
    ESP8266 or ESP32 on Arduino IDE.
 
-   This library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
    This library is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with this library; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
 /*
    **** Note Regarding Client Connection Keeping ****
    Client connection is established in functions that directly involve use of
-   client, i.e sendGetToTelegram, sendPostToTelegram, and
-   sendMultipartFormDataToTelegram. It is closed at the end of
-   sendMultipartFormDataToTelegram, but not at the end of sendGetToTelegram and
-   sendPostToTelegram as these may need to keep the connection alive for respose
+   client, i.e sendGetToBale, sendPostToBale, and
+   sendMultipartFormDataToBale. It is closed at the end of
+   sendMultipartFormDataToBale, but not at the end of sendGetToBale and
+   sendPostToBale as these may need to keep the connection alive for respose
    / response checking. Re-establishing a connection then wastes time which is
    noticeable in user experience. Due to this, it is important that connection
-   be closed manually after calling sendGetToTelegram or sendPostToTelegram by
+   be closed manually after calling sendGetToBale or sendPostToBale by
    calling closeClient(); Failure to close connection causes memory leakage and
    SSL errors
  */
 
 #include "BaleMessengerBot.h"
-#define _debug 1
 
 BaleMessengerBot::BaleMessengerBot(String token, Client &client) {
   _token = token;
@@ -42,13 +31,13 @@ BaleMessengerBot::BaleMessengerBot(String token, Client &client) {
 }
 
 int BaleMessengerBot::init() {
-  for(last_message_received=0 ; 1 ; last_message_received++){
+  while(1){
     String command = "bot" + _token + "/getUpdates";
     DynamicJsonBuffer jsonBuffer;
     JsonObject &payload = jsonBuffer.createObject();
-    payload["offset"] = last_message_received;
-    payload["limit"] = 3;
-    String response = sendPostToTelegram(command,payload);
+    payload["offset"] = last_message_received+1;
+    payload["limit"] = maxlimitinit;
+    String response = sendPostToBale(command,payload);
     if (response == "") {
       if (_debug)
         Serial.println(F("Received empty string in response!"));
@@ -61,12 +50,10 @@ int BaleMessengerBot::init() {
         if (root.containsKey("result")) {
           int resultArrayLength = root["result"].size();
           if (resultArrayLength != 0) {
-            for (int i = 0; i < resultArrayLength; i++) {
-              JsonObject &result = root["result"][i];
-              last_message_received = result["update_id"];
-            }
+            JsonObject &result = root["result"][resultArrayLength-1];
+            last_message_received = result["update_id"];
           }else{
-            last_message_received--;
+            closeClient();
             return last_message_received;
           }
         }
@@ -75,7 +62,7 @@ int BaleMessengerBot::init() {
   }
 }
 
-String BaleMessengerBot::sendGetToTelegram(String command) {
+String BaleMessengerBot::sendGetToBale(String command) {
   String mess = "";
   long now;
   bool avail;
@@ -125,8 +112,7 @@ String BaleMessengerBot::sendGetToTelegram(String command) {
   return mess;
 }
 
-String BaleMessengerBot::sendPostToTelegram(String command,
-                                                JsonObject &payload) {
+String BaleMessengerBot::sendPostToBale(String command, JsonObject &payload) {
 
   String body = "";
   String headers = "";
@@ -209,7 +195,7 @@ String BaleMessengerBot::sendPostToTelegram(String command,
   return body;
 }
 
-String BaleMessengerBot::sendMultipartFormDataToTelegram(
+String BaleMessengerBot::sendMultipartFormDataToBale(
     String command, String binaryProperyName, String fileName,
     String contentType, String chat_id, int fileSize,
     MoreDataAvailable moreDataAvailableCallback,
@@ -351,7 +337,7 @@ String BaleMessengerBot::sendMultipartFormDataToTelegram(
 bool BaleMessengerBot::getMe() {
   String command = "bot" + _token + "/getMe";
   String response =
-      sendGetToTelegram(command); // receive reply
+      sendGetToBale(command); // receive reply
   DynamicJsonBuffer jsonBuffer;
   JsonObject &root = jsonBuffer.parseObject(response);
 
@@ -371,9 +357,9 @@ bool BaleMessengerBot::getMe() {
 }
 
 /***************************************************************
- * GetUpdates - function to receive messages from Bale *
- * (Argument to pass: the last+1 message to read)             *
- * Returns the number of new messages           *
+ * GetUpdates - function to receive messages from Bale         *
+ * (Argument to pass: the last+1 message to read)              *
+ * Returns the number of new messages                          *
  ***************************************************************/
 int BaleMessengerBot::getUpdates(long offset) {
 
@@ -386,7 +372,7 @@ int BaleMessengerBot::getUpdates(long offset) {
   payload["offset"] = String(offset);
   payload["limit"] = String(HANDLE_MESSAGES);
 
-  String response = sendPostToTelegram(command,payload);
+  String response = sendPostToBale(command,payload);
 
   if (response == "") {
     if (_debug)
@@ -525,36 +511,10 @@ bool BaleMessengerBot::processResult(JsonObject &result, int messageIndex) {
 }
 
 /***********************************************************************
- * SendMessage - function to send message to telegram                  *
+ * SendMessage - function to send message to Bale                      *
  * (Arguments to pass: chat_id, text to transmit and markup(optional)) *
  ***********************************************************************/
-bool BaleMessengerBot::sendSimpleMessage(String chat_id, String text,
-                                             String parse_mode) {
-
-  bool sent = false;
-  if (_debug)
-    Serial.println(F("SEND Simple Message"));
-  long sttime = millis();
-
-  if (text != "") {
-    while (millis() < sttime + 8000) { // loop for a while to send the message
-      String command = "bot" + _token + "/sendMessage?chat_id=" + chat_id +
-                       "&text=" + text + "&parse_mode=" + parse_mode;
-      String response = sendGetToTelegram(command);
-      if (_debug)
-        Serial.println(response);
-      sent = checkForOkResponse(response);
-      if (sent) {
-        break;
-      }
-    }
-  }
-  closeClient();
-  return sent;
-}
-
-bool BaleMessengerBot::sendMessage(String chat_id, String text,
-                                       String parse_mode) {
+bool BaleMessengerBot::sendMessage(String chat_id, String text, int reply_to_message_id) {
 
   DynamicJsonBuffer jsonBuffer;
   JsonObject &payload = jsonBuffer.createObject();
@@ -562,54 +522,14 @@ bool BaleMessengerBot::sendMessage(String chat_id, String text,
   payload["chat_id"] = chat_id;
   payload["text"] = text;
 
-  if (parse_mode != "") {
-    payload["parse_mode"] = parse_mode;
+  if (reply_to_message_id != 0) {
+    payload["reply_to_message_id"] = reply_to_message_id;
   }
 
   return sendPostMessage(payload);
 }
 
-bool BaleMessengerBot::sendMessageWithReplyKeyboard(
-    String chat_id, String text, String parse_mode, String keyboard,
-    bool resize, bool oneTime, bool selective) {
-
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &payload = jsonBuffer.createObject();
-
-  payload["chat_id"] = chat_id;
-  payload["text"] = text;
-
-  if (parse_mode != "") {
-    payload["parse_mode"] = parse_mode;
-  }
-
-  JsonObject &replyMarkup = payload.createNestedObject("reply_markup");
-
-  // Reply keyboard is an array of arrays.
-  // Outer array represents rows
-  // Inner arrays represents columns
-  // This example "ledon" and "ledoff" are two buttons on the top row
-  // and "status is a single button on the next row"
-  DynamicJsonBuffer keyboardBuffer;
-  replyMarkup["keyboard"] = keyboardBuffer.parseArray(keyboard);
-
-  // Telegram defaults these values to false, so to decrease the size of the
-  // payload we will only send them if needed
-  if (resize) {
-    replyMarkup["resize_keyboard"] = resize;
-  }
-
-  if (oneTime) {
-    replyMarkup["one_time_keyboard"] = oneTime;
-  }
-
-  if (selective) {
-    replyMarkup["selective"] = selective;
-  }
-
-  return sendPostMessage(payload);
-}
-
+/*
 bool BaleMessengerBot::sendMessageWithInlineKeyboard(String chat_id,
                                                          String text,
                                                          String parse_mode,
@@ -632,9 +552,10 @@ bool BaleMessengerBot::sendMessageWithInlineKeyboard(String chat_id,
 
   return sendPostMessage(payload);
 }
+*/
 
 /***********************************************************************
- * SendPostMessage - function to send message to telegram                  *
+ * SendPostMessage - function to send message to Bale                  *
  * (Arguments to pass: chat_id, text to transmit and markup(optional)) *
  ***********************************************************************/
 bool BaleMessengerBot::sendPostMessage(JsonObject &payload) {
@@ -647,7 +568,7 @@ bool BaleMessengerBot::sendPostMessage(JsonObject &payload) {
   if (payload.containsKey("text")) {
     while (millis() < sttime + 8000) { // loop for a while to send the message
       String command = "bot" + _token + "/sendMessage";
-      String response = sendPostToTelegram(command, payload);
+      String response = sendPostToBale(command, payload);
       if (_debug)
         Serial.println(response);
       sent = checkForOkResponse(response);
@@ -672,7 +593,7 @@ String BaleMessengerBot::sendPostPhoto(JsonObject &payload) {
   if (payload.containsKey("photo")) {
     while (millis() < sttime + 8000) { // loop for a while to send the message
       String command = "bot" + _token + "/sendPhoto";
-      response = sendPostToTelegram(command, payload);
+      response = sendPostToBale(command, payload);
       if (_debug)
         Serial.println(response);
       sent = checkForOkResponse(response);
@@ -694,7 +615,7 @@ String BaleMessengerBot::sendPhotoByBinary(
   if (_debug)
     Serial.println("SEND Photo");
 
-  String response = sendMultipartFormDataToTelegram(
+  String response = sendMultipartFormDataToBale(
       "sendPhoto", "photo", "img.jpg", contentType, chat_id, fileSize,
       moreDataAvailableCallback, getNextByteCallback);
 
@@ -706,9 +627,7 @@ String BaleMessengerBot::sendPhotoByBinary(
 
 String BaleMessengerBot::sendPhoto(String chat_id, String photo,
                                        String caption,
-                                       bool disable_notification,
-                                       int reply_to_message_id,
-                                       String keyboard) {
+                                       int reply_to_message_id) {
 
   DynamicJsonBuffer jsonBuffer;
   JsonObject &payload = jsonBuffer.createObject();
@@ -720,20 +639,10 @@ String BaleMessengerBot::sendPhoto(String chat_id, String photo,
     payload["caption"] = caption;
   }
 
-  if (disable_notification) {
-    payload["disable_notification"] = disable_notification;
-  }
-
   if (reply_to_message_id && reply_to_message_id != 0) {
     payload["reply_to_message_id"] = reply_to_message_id;
   }
 
-  if (keyboard) {
-    JsonObject &replyMarkup = payload.createNestedObject("reply_markup");
-
-    DynamicJsonBuffer keyboardBuffer;
-    replyMarkup["keyboard"] = keyboardBuffer.parseArray(keyboard);
-  }
 
   return sendPostPhoto(payload);
 }
@@ -749,33 +658,6 @@ bool BaleMessengerBot::checkForOkResponse(String response) {
   }
 
   return false;
-}
-
-bool BaleMessengerBot::sendChatAction(String chat_id, String text) {
-
-  bool sent = false;
-  if (_debug)
-    Serial.println(F("SEND Chat Action Message"));
-  long sttime = millis();
-
-  if (text != "") {
-    while (millis() < sttime + 8000) { // loop for a while to send the message
-      String command = "bot" + _token + "/sendChatAction?chat_id=" + chat_id +
-                       "&action=" + text;
-      String response = sendGetToTelegram(command);
-
-      if (_debug)
-        Serial.println(response);
-      sent = checkForOkResponse(response);
-
-      if (sent) {
-        break;
-      }
-    }
-  }
-
-  closeClient();
-  return sent;
 }
 
 void BaleMessengerBot::closeClient() {
