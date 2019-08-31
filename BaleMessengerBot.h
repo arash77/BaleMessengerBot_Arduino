@@ -51,8 +51,8 @@ public:
   bool getMe();
 
   bool sendMessage(String chat_id, String text, int reply_to_message_id = 0);
-  bool sendMessageWithInlineKeyboard(String chat_id, String text,
-                                     String parse_mode, String keyboard);
+/*bool sendMessageWithInlineKeyboard(String chat_id, String text,
+                                     String parse_mode, String keyboard);*/
 
 
   bool sendPostMessage(JsonObject &payload);
