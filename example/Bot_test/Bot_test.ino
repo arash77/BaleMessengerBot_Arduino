@@ -2,7 +2,7 @@
 #include <WiFiClientSecure.h>
 #include <BaleMessengerBot.h>
 
-#Change SSID, PASSWORD and BOTTOKEN
+//Change SSID, PASSWORD and BOTTOKEN
 
 #define ssid "SSID"
 #define password "PASSWORD"
@@ -22,21 +22,21 @@ void handleNewMessages(int numNewMessages) {
     String text = bot.messages[i].text;
     String from_name = bot.messages[i].from_name;
     if (text == "/start") {
-      String welcome = "سلام " + from_name + ",\nبه ربات اینترنت اشیا خوش اومدی.";
+      String welcome = "hey " + from_name + ",\nwelcome to bale iot bot.";
       bot.sendMessage(chat_id, welcome);
     }
 
     else if (text == "1") {
       digitalWrite(LED_BUILTIN, LOW);
-      bot.sendMessage(chat_id, "چراغ روشن شد!");
+      bot.sendMessage(chat_id, "led is on!");
     }
     else if (text == "0") {
       digitalWrite(LED_BUILTIN, HIGH);
-      bot.sendMessage(chat_id, "چراغ خاموش شد!");
+      bot.sendMessage(chat_id, "led is off!");
     }
 
     else {
-      bot.sendMessage(chat_id, "منظورتون چیه؟");
+      bot.sendMessage(chat_id, "What do you mean?");
     }
   }
 }
